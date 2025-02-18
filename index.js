@@ -3,7 +3,8 @@ import 'dotenv/config';
 
 import { WALLET_DATA } from './constants.js';
 
-const delay = (ms) => {
+const delay = () => {
+  const ms = Math.floor(Math.random() * (4000 - 2000 + 1) + 2000);
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
@@ -29,18 +30,20 @@ const signMessage = async (privateKey) => {
     const nodeMessage = `Node activation request for ${wallet.address} at ${timeStamp}`;
 
     const signedClaimMessage = await wallet.signMessage(claimMessage);
+    await delay();
     const signedNodeMessage = await wallet.signMessage(nodeMessage);
+    await delay();
 
     const walletAddress = await registerWallet(wallet.address);
+
     if (walletAddress) {
       await claimPoints(walletAddress, signedClaimMessage, timeStamp);
-      delay(3000);
+      await delay();
       await startNode(signedNodeMessage, timeStamp, walletAddress);
+      await delay();
     }
-    delay(2000);
   } catch (error) {
     console.error('Ошибка при генерации сообщения:', error);
-    delay(2000);
   }
 };
 
@@ -102,7 +105,7 @@ const claimPoints = async (walletAddress, sign, timestamp) => {
 };
 
 const init = () => {
-  WALLET_DATA.forEach((walletData) => signMessage(walletData.private_key));
+  WALLET_DATA.forEach(async (walletData) => await signMessage(walletData.private_key));
 };
 
 init();
