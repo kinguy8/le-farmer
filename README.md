@@ -15,3 +15,6 @@ yarn
 node index.js
 ```
 ![image](https://github.com/user-attachments/assets/e3f3203c-1df9-407a-be07-71dcff267443)
+
+
+В дальнейшем добавлю прокси и состояние, при котором лишние запросы типа запуска ноды не будут вызываться (?)
