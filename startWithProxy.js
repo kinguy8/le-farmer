@@ -1,45 +1,64 @@
 import { ethers } from 'ethers';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import fetch from 'node-fetch';
 import 'dotenv/config';
 
-import { WALLET_DATA } from './constants.js';
+import { MAIN_WALLETS, PROXY } from './constants.js';
+
+const findFirstDigit = (str) => {
+  const match = str.match(/\d/);
+  return match ? match[0] : null;
+};
 
 const delay = () => {
   const ms = Math.floor(Math.random() * (4000 - 2000 + 1) + 2000);
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
-const getCommonRequst = (args) => {
-  const payload = { ...args };
-
+const getCommonRequst = (args, proxy, userAgent) => {
   return {
+    agent: proxy,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'user-agent': userAgent,
       Origin: 'https://dashboard.layeredge.io',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(args),
   };
 };
 
-const signMessage = async (privateKey) => {
+const signMessage = async (privateKey, proxyData) => {
   try {
+    const { proxyName, userAgent } = proxyData;
+
     const wallet = new ethers.Wallet(privateKey);
 
-    const timeStamp = Date.now();
-    const claimMessage = `I am claiming my daily node point for ${wallet.address} at ${timeStamp}`;
-    const nodeMessage = `Node activation request for ${wallet.address} at ${timeStamp}`;
+    const timestamp = Date.now();
+    const claimMessage = `I am claiming my daily node point for ${wallet.address} at ${timestamp}`;
+    const nodeMessage = `Node activation request for ${wallet.address} at ${timestamp}`;
 
     const signedClaimMessage = await wallet.signMessage(claimMessage);
     await delay();
     const signedNodeMessage = await wallet.signMessage(nodeMessage);
     await delay();
 
-    const walletAddress = await registerWallet(wallet.address);
+    const proxyUrl = `http://${proxyName}`;
+
+    const proxyAgent = new HttpsProxyAgent(proxyUrl);
+
+    const walletAddress = await registerWallet(
+      getCommonRequst({ walletAddress: wallet.address }, proxyAgent, userAgent),
+      wallet.address,
+    );
 
     if (walletAddress) {
-      await claimPoints(walletAddress, signedClaimMessage, timeStamp);
+      await claimPoints(
+        getCommonRequst({ walletAddress, sign: signedClaimMessage, timestamp }, proxyAgent, userAgent),
+        walletAddress,
+      );
       await delay();
-      await startNode(signedNodeMessage, timeStamp, walletAddress);
+      await startNode(getCommonRequst({ sign: signedNodeMessage, timestamp }, proxyAgent, userAgent), walletAddress);
       await delay();
     }
   } catch (error) {
@@ -47,11 +66,11 @@ const signMessage = async (privateKey) => {
   }
 };
 
-const registerWallet = async (walletAddress) => {
+const registerWallet = async (commonRequest, walletAddress) => {
   const apiUrl = `https://referralapi.layeredge.io/api/referral/register-wallet/${process.env.REF_CODE}`;
 
   try {
-    const response = await fetch(apiUrl, getCommonRequst({ walletAddress }));
+    const response = await fetch(apiUrl, commonRequest);
 
     if (response.status === 200) {
       console.log(`Адрес ${walletAddress} успешно зарегестрирован`);
@@ -62,16 +81,16 @@ const registerWallet = async (walletAddress) => {
       return walletAddress;
     }
   } catch (error) {
-    console.error('Ошибка при отправке запроса:', error);
+    console.error('Ошибка при регистрации кошелька:', error);
     return '';
   }
 };
 
-const startNode = async (sign, timestamp, walletAddress) => {
+const startNode = async (commonRequest, walletAddress) => {
   const apiUrl = `https://referralapi.layeredge.io/api/light-node/node-action/${walletAddress}/start`;
 
   try {
-    const response = await fetch(apiUrl, getCommonRequst({ sign, timestamp }));
+    const response = await fetch(apiUrl, commonRequest);
 
     if (response.status === 200) {
       console.log(`Успешно запущена нода на адресе ${walletAddress}`);
@@ -82,30 +101,33 @@ const startNode = async (sign, timestamp, walletAddress) => {
       return walletAddress;
     }
   } catch (error) {
-    console.error('Ошибка при отправке запроса:', error);
+    console.error('Ошибка при запуски ноды:', error);
     return '';
   }
 };
 
-const claimPoints = async (walletAddress, sign, timestamp) => {
+const claimPoints = async (commonRequest, walletAddress) => {
   const apiUrl = 'https://referralapi.layeredge.io/api/light-node/claim-node-points';
 
   try {
-    const response = await fetch(apiUrl, getCommonRequst({ walletAddress, sign, timestamp }));
+    const response = await fetch(apiUrl, commonRequest);
 
     if (response.status === 200) {
-      console.log(`Успешный claim для ${walletAddress}`, result);
+      console.log(`Успешный claim для ${walletAddress}`);
     }
     if (response.status === 405) {
       console.error(`Для кошелька ${walletAddress} уже выполнен claim. Попробуйте снова позже`);
     }
   } catch (error) {
-    console.error('Ошибка при отправке запроса:', error);
+    console.error('Ошибка при клэйми:', error);
   }
 };
 
 const init = () => {
-  WALLET_DATA.forEach(async (walletData) => await signMessage(walletData.private_key));
+  MAIN_WALLETS.forEach(async (walletData) => {
+    await signMessage(walletData.private_key, PROXY[findFirstDigit(walletData.private_key)]);
+    await delay();
+  });
 };
 
 init();

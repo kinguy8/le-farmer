@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
+    "proxy": "nodemon startWithProxy.js",
+    "simple": "nodemon startWithoutProxy.js",
+    "nexus": "nodemon nexus.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
@@ -16,6 +18,8 @@
     "disgrab-messages": "1.1.1",
     "dotenv": "16.4.5",
     "ethers": "^6.13.5",
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^3.3.2",
     "openai": "^4.83.0",
     "web3": "^4.16.0"
   },
