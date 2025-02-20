@@ -94,7 +94,7 @@ const claimPoints = async (walletAddress, sign, timestamp) => {
     const response = await fetch(apiUrl, getCommonRequst({ walletAddress, sign, timestamp }));
 
     if (response.status === 200) {
-      console.log(`Успешный claim для ${walletAddress}`, result);
+      console.log(`Успешный claim для ${walletAddress}`);
     }
     if (response.status === 405) {
       console.error(`Для кошелька ${walletAddress} уже выполнен claim. Попробуйте снова позже`);
