@@ -3,7 +3,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import fetch from 'node-fetch';
 import 'dotenv/config';
 
-import { MAIN_WALLETS, PROXY } from './constants.js';
+import { WALLET_DATA, PROXY } from './constants.js';
 
 const findFirstDigit = (str) => {
   const match = str.match(/\d/);
@@ -124,7 +124,7 @@ const claimPoints = async (commonRequest, walletAddress) => {
 };
 
 const init = () => {
-  MAIN_WALLETS.forEach(async (walletData) => {
+  WALLET_DATA.forEach(async (walletData) => {
     await signMessage(walletData.private_key, PROXY[findFirstDigit(walletData.private_key)]);
     await delay();
   });
